@@ -9,22 +9,28 @@ class UserController extends Controller {
         $user = D('User');
 
         if(IS_POST){
-            if($user->create()){
-                $user->name = I('post.name');
-                $user->pass = md5(I('post.pass'));
-                $user->email = I('post.email');
-                $user->ctime = time();
-                if ($user->add()) {
-                    $this->sendEmail(I('post.name'),I('post.email'));
+            $verify = new \Think\Verify();
+            $code = $_POST['code'];
+            if($verify->check($code,1)) {
+                if ($user->create()) {
+                    $user->name = I('post.name');
+                    $user->pass = md5(I('post.pass'));
+                    $user->email = I('post.email');
+                    $user->ctime = time();
+                    if ($user->add()) {
+                        $this->sendEmail(I('post.name'), I('post.email'));
 
-                }else{
-                    $this->success("注册失败，请重新注册",'','3');
+                    } else {
+                        $this->success("注册失败，请重新注册", '', '3');
+
+                    }
+                } else {
+                    $error = $user->getError();
+                    $this->success("$error", '', '3');
 
                 }
             }else{
-                $error= $user->getError();
-                $this->success("$error",'','3');
-
+                $this->success("验证码错误,请重新输入", '', '3');
             }
         }
     }
@@ -33,28 +39,39 @@ class UserController extends Controller {
     public function login($user='')
     {
         if ($user !== '') {
-            cookie('name', $user,120);
+            cookie('name', $user,3600);
             $this->redirect('/Home/index/index');
         } else {
             $user = D('User');
             if (IS_POST) {
-                if ($user->create()) {
-                    $users = $user->where("name='" . I('post.username') . "'")->select();
-                    if ($users['0']['pass'] === md5(I('post.pass'))) {
-                        cookie('name', $users['0']['name'],120);
-                        $this->redirect('Home/index/index');
+                $verify = new \Think\Verify();
+                $code = $_POST['code'];
+                if($verify->check($code,0)) {
+                    if ($user->create()) {
+                        $users = $user->where("name='" . I('post.username') . "'")->select();
+                        if ($users['0']['pass'] === md5(I('post.pass'))) {
+                            cookie('name', $users['0']['name'], 3600);
+                            $this->redirect('Home/index/index');
+                        } else {
+                            $this->success("登陆失败,请重新输入", '', '3');
+                        }
                     } else {
-                        $this->success("登陆失败,请重新输入", '', '3');
+                        $error = $user->getError();
+                        $this->success("$error", U('Home/index/index'), '3');
                     }
-                } else {
-                    $error = $user->getError();
-                    $this->success("$error", U('Home/inde/index'), '3');
+                }else{
+                    $this->success("验证码错误,请重新输入", '', '3');
                 }
 
             }
 
         }
 
+    }
+
+    public function loginOut(){
+        cookie('name',null);
+        $this->success("退出成功",U("Home/index/index"),'');
     }
 
     public function checkEmail()
@@ -85,7 +102,7 @@ class UserController extends Controller {
     public function sendEmail($name,$email){
         $url = 'http://api.sendcloud.net/apiv2/mail/send';
         $API_USER = 'useramaya_test_vo1VGp';
-        $API_KEY = '4zpoF4djku9BBz9h';
+        $API_KEY = 'z7pmhD6x98auxUKc';
 
         $param = array(
             'apiUser' => $API_USER, # 使用api_user和api_key进行验证
@@ -113,6 +130,28 @@ class UserController extends Controller {
         $this->login(I('post.name'));
 
         return $result;
+    }
+
+    public function yzm(){
+        $config =    array(
+            'fontSize'    =>    15,    // 验证码字体大小
+            'length'      =>    4,     // 验证码位数
+            'useNoise'    => false,
+
+        );
+        $Verify = new \Think\Verify($config);
+        $Verify->entry(0);
+    }
+
+    public function yzm1(){
+        $config =    array(
+            'fontSize'    =>    15,    // 验证码字体大小
+            'length'      =>    4,     // 验证码位数
+            'useNoise'    => false,
+
+        );
+        $Verify = new \Think\Verify($config);
+        $Verify->entry(1);
     }
 
 }
